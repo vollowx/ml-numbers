@@ -1,2 +1,3 @@
-main: main.c Makefile
-	gcc -lm -O3 -o main main.c
+main: main.c number_recognition.c Makefile
+	gcc -lm -o main main.c
+	gcc -lm -o numberr number_recognition.c
