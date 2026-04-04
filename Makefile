@@ -1,2 +1,2 @@
-main: main.c
-	gcc -lm -o main main.c
+main: main.c Makefile
+	gcc -lm -O3 -o main main.c
