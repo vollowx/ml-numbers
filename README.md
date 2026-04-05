@@ -44,3 +44,13 @@ Benchmark 1: ./main
 ```
 
 The time may vary since the durations are measured in different time.
+
+## GEMM Optimizations
+
+- Matrix transposition
+- [OpenMP API Syntax Reference Guide](https://www.openmp.org/wp-content/uploads/OpenMPRefCard-6-r7-2026-web.pdf)
+
+## Lisp Integration with C
+
+- [ECL Manual](https://ecl.common-lisp.dev/static/files/manual/current-manual/)
+- [SBCL Manual](https://www.sbcl.org/manual/index.html#Foreign-Function-Interface)

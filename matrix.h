@@ -1,9 +1,7 @@
 #ifndef MATRIX_H_
 #define MATRIX_H_
 
-#include <assert.h>
 #include <stdlib.h>
-#include <string.h>
 
 typedef struct {
   float *data;
@@ -26,6 +24,9 @@ void matrix_mul_transpose_b(Matrix out, Matrix a, Matrix b);
 
 #ifdef MATRIX_IMPLEMENTATION
 
+#include <assert.h>
+#include <string.h>
+
 Matrix init_matrix(size_t rows, size_t cols) {
   Matrix m = {
       .data = (float *)calloc(rows * cols, sizeof(float)),
@@ -36,9 +37,8 @@ Matrix init_matrix(size_t rows, size_t cols) {
 }
 
 void free_matrix(Matrix m) {
-  if (m.data != NULL) {
-    free(m.data);
-  }
+  assert(m.data != NULL);
+  free(m.data);
 }
 
 Matrix matrix_transpose(Matrix m) {
