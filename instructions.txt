@@ -267,7 +267,7 @@ append
 ..XXXX..
 .X....X.
 .X...X..
-..XXXX..
+.XXXXX..
 .X....X.
 .X...X..
 ..XXXX..
@@ -277,7 +277,7 @@ append
 ..XXX...
 .X...XX.
 .XX...X.
-..XXXX..
+..XXXXX.
 .X....X.
 .X....X.
 ..XXXX..
@@ -285,12 +285,12 @@ append
 as 8
 
 append
-.XXXXXX.
-.X....X.
-.X...XX.
 .XXXXX..
 .X....X.
-.X....X.
+X....XX.
+.XXXXX..
+XX....X.
+XX....X.
 .XXXXXX.
 ........
 as 8
@@ -364,6 +364,17 @@ test
 ......X.
 ........
 expect 4
+
+test
+........
+..XXXX..
+.X....X.
+..XXXX..
+.X....X.
+.X....X.
+.XXXXX..
+........
+expect 8
 
 print_divider
 print_model 4

@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <math.h>
+#include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -96,7 +97,7 @@ void train(Model *m, Numbers dataset, int cycles, float lr) {
         // These weights are stored in the n-th column of the matrix
         for (int i = 0; i < ROWS * COLS; i++) {
           // Indexing into a 64x10 matrix: row i, column n
-          m->weights.data[n * 64 + i] += lr * error * num->input.data[i];
+          matrix_at(m->weights, n, i) += lr * error * num->input.data[i];
         }
 
         m->biases.data[n] += lr * error;

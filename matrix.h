@@ -11,13 +11,16 @@ typedef struct {
   size_t cols;
 } Matrix;
 
+#define matrix_at(matrix, row, col) matrix.data[row * matrix.cols + col]
+
 Matrix init_matrix(size_t rows, size_t cols);
 void free_matrix(Matrix m);
 Matrix matrix_transpose(Matrix m);
 void matrix_plus(Matrix out, Matrix a, Matrix b);
-void matrix_plus_inplace(Matrix a, Matrix b);
+void matrix_plus_inplace(Matrix out, Matrix b);
 void matrix_mul(Matrix out, Matrix a, Matrix b);
 void matrix_mul_transposed_b(Matrix out, Matrix a, Matrix bT);
+void matrix_mul_transpose_b(Matrix out, Matrix a, Matrix b);
 
 #endif // MATRIX_H_
 
@@ -48,16 +51,18 @@ Matrix matrix_transpose(Matrix m) {
   return out;
 }
 
-void matrix_plus_inplace(Matrix a, Matrix b) {
-  assert(a.rows == b.rows);
-  assert(a.cols == b.cols);
+void matrix_plus_inplace(Matrix out, Matrix b) {
+  assert(out.rows == b.rows);
+  assert(out.cols == b.cols);
 
-  size_t size = a.rows * a.cols;
+  size_t size = out.rows * out.cols;
   for (size_t i = 0; i < size; ++i)
-    a.data[i] += b.data[i];
+    out.data[i] += b.data[i];
 }
 
+// General matrix-matrix multiplication
 void matrix_mul(Matrix out, Matrix a, Matrix b) {
+  // a: [M x K], b: [K x N] -> out: [M x N]
   assert(a.cols == b.rows);
   assert(out.rows == a.rows);
   assert(out.cols == b.cols);
@@ -66,30 +71,46 @@ void matrix_mul(Matrix out, Matrix a, Matrix b) {
 
   for (int i = 0; i < a.rows; ++i) {
     for (int k = 0; k < a.cols; ++k) {
-      float temp_a = a.data[i * a.cols + k];
+      float temp_a = matrix_at(a, i, k);
 
       for (int j = 0; j < b.cols; ++j) {
-        out.data[i * out.cols + j] += temp_a * b.data[k * b.cols + j];
+        matrix_at(out, i, j) += temp_a * matrix_at(b, k, j);
       }
     }
   }
 }
 
 void matrix_mul_transposed_b(Matrix out, Matrix a, Matrix bT) {
-  // Dimensions: a is [M x K], bT is [N x K] -> Result is [M x N]
+  // a: [M x K], bT: [N x K] -> out: [M x N]
   assert(a.cols == bT.cols);
+  assert(out.rows == a.rows);
+  assert(out.cols == bT.rows);
 
   memset(out.data, 0, out.rows * out.cols * sizeof(float));
 
   for (int i = 0; i < a.rows; ++i) {
-    for (int j = 0; j < bT.rows; ++j) { // bT.rows is the original b.cols
+    for (int j = 0; j < bT.rows; ++j) {
       float sum = 0;
       for (int k = 0; k < a.cols; ++k) {
-        sum += a.data[i * a.cols + k] * bT.data[j * bT.cols + k];
+        sum += matrix_at(a, i, k) * matrix_at(bT, j, k);
       }
-      out.data[i * out.cols + j] = sum;
+      matrix_at(out, i, j) = sum;
     }
   }
+}
+
+// Since this function includes allocating and freeing a transposed matrix, it
+// would not improve the performance a lot when this function is called very
+// frequently. In that case you should usr `matrix_mul_transposed_b`
+void matrix_mul_transpose_b(Matrix out, Matrix a, Matrix b) {
+  // a: [M x K], b: [K x N] -> out: [M x N]
+  assert(a.cols == b.rows);
+  assert(out.rows == a.rows);
+  assert(out.cols == b.cols);
+
+  Matrix bT = matrix_transpose(b);
+  matrix_mul_transposed_b(out, a, bT);
+  free_matrix(bT);
 }
 
 #endif // MATRIX_IMPLEMENTATION
