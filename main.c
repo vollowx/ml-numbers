@@ -52,12 +52,15 @@ void read_grid(FILE *fp, Matrix matrix) {
 }
 
 int main(int argc, char **argv) {
-  srand(time(0));
-  //               I   Layer 1 (also the size of output)
   size_t arch[] = {64, 10};
-  Neuron_network nn = init_neuron_network(arch, sizeof(arch) / sizeof(arch[0]));
+  Neural_net nn = init_neural_net(arch, sizeof(arch) / sizeof(arch[0]));
 
   Numbers dataset = {0};
+  Matrix expected_output[10];
+  for (int num = 0; num < 10; ++num) {
+    expected_output[num] = init_matrix(1, 10);
+    expected_output[num].data[num] = 1;
+  }
 
   FILE *fp = fopen("instructions2.txt", "r");
   if (!fp) {
@@ -65,43 +68,42 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  char cmd[50];
-  char dummy[10];
+  char cmd[50], dummy[10];
 
   // TASK(20260405-214510): Use Lisp to instruct this program
   while (fscanf(fp, "%s", cmd) != EOF) {
     if (strcmp(cmd, "append") == 0) {
       Number number = {0};
       number.input = init_matrix(1, 64);
-      read_grid(fp, number.input);
-
-      // as <number>
       int label;
-      fscanf(fp, "%s %d", dummy, &label);
-
-      number.label = label;
+      read_grid(fp, number.input);
+      fscanf(fp, "%s %d", dummy, &number.label);
 
       da_append(&dataset, number);
     } else if (strcmp(cmd, "test") == 0) {
       Matrix test_input = init_matrix(1, 64);
-      read_grid(fp, test_input);
-
       int expect;
+      read_grid(fp, test_input);
       fscanf(fp, "%s %d", dummy, &expect);
 
-      Matrix output = neuron_network_forward(nn, test_input);
+      Matrix output = neural_net_forward(nn, test_input);
 
       int prediction = -1;
-      for (int n = 1; n < NUM_CLASSES; n++)
+      for (int n = 1; n < output.cols; n++)
         if (output.data[n] > output.data[prediction])
           prediction = n;
 
       if (prediction == expect)
-        printf("test: %d (conf: %.2f%%) ... passing\n", prediction,
-               output.data[prediction] * 100);
+        printf("test: %d from %f ... √\n", prediction, output.data[prediction]);
       else
-        printf("test: %d (conf: %.2f%%) ... failing, expected: %d\n",
-               prediction, output.data[prediction] * 100, expect);
+        printf("test: %d from %f ... ×, expected: %d\n", prediction,
+               output.data[prediction], expect);
+
+      printf("\t\t\t\t\t[ ");
+      for (int i = 0; i < output.cols; ++i)
+        printf("\033[%dm%f\033[0m ", output.data[i] > 0.5 ? 32 : 90,
+               output.data[i]);
+      printf("]\n");
 
       free_matrix(test_input);
       free_matrix(output);
@@ -112,21 +114,14 @@ int main(int argc, char **argv) {
 
       printf("training started for %d epoches\n", epoches);
 
-      Matrix expected_output[10];
-      for (int num = 0; num < 10; ++num) {
-        expected_output[num] = init_matrix(1, 10);
-        expected_output[num].data[num] = 1;
-      }
-
       float loss;
       for (int epoch = 0; epoch < epoches; ++epoch) {
         loss = 0;
         for (int num = 0; num < 10; ++num) {
           for (int sample = 0; sample < 3; ++sample) {
-            neuron_network_train(&nn, dataset.items[num * 3 + sample].input,
-                                 expected_output[num], lr);
-            loss +=
-                neuron_network_loss(nn, dataset.items[num * 3 + sample].input,
+            neural_net_train(nn, dataset.items[num * 3 + sample].input,
+                             expected_output[num], lr);
+            loss += neural_net_loss(nn, dataset.items[num * 3 + sample].input,
                                     expected_output[num]);
           }
         }
@@ -137,12 +132,16 @@ int main(int argc, char **argv) {
       printf("\033[F");
       printf("training completed for %d epoches, final loss: %f\033[0K\n",
              epoches, loss);
-    } else if (strcmp(cmd, "print_divider") == 0) {
+    } else if (strcmp(cmd, "---") == 0) {
       printf("---\n");
+    } else if (strcmp(cmd, "rand") == 0) {
+      unsigned int seed;
+      fscanf(fp, "%d", &seed);
+      srand(seed == 0 ? time(0) : seed);
     } else if (strcmp(cmd, "nn_randomize") == 0) {
-      neuron_network_randomize(nn);
+      neural_net_randomize(nn);
     } else if (strcmp(cmd, "nn_print") == 0) {
-      neuron_network_print(nn);
+      neural_net_print(nn);
     } else if (strcmp(cmd, "print_dataset") == 0) {
       print_dataset(dataset);
     }
@@ -153,7 +152,7 @@ int main(int argc, char **argv) {
   da_foreach(Number, num, &dataset) { free_matrix(num->input); }
   da_free(dataset);
 
-  free_neuron_network(nn);
+  free_neural_net(nn);
 
   return 0;
 }

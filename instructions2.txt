@@ -328,9 +328,15 @@ append
 ........
 as 9
 
+print_dataset
+
+---
+
+rand 0
 nn_randomize
 nn_train 5000 1
-print_divider
+
+---
 
 test
 ........
@@ -345,12 +351,12 @@ expect 1
 
 test
 ........
-...XXX..
-..X...X.
-......X.
+..XXX...
+.X...X..
 .....X..
 ....X...
-..XXXXXX
+...X....
+.XXXXXX.
 ........
 expect 2
 

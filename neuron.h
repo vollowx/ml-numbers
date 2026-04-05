@@ -3,6 +3,8 @@
 
 #include "matrix.h"
 
+#define output_layer(nn) nn.layers[nn.count - 1]
+
 float sigmoid(double x);
 float sigmoidf(float x);
 // Derivative of sigmoid, x is the result of `sigmoid(n)`
@@ -20,18 +22,16 @@ typedef struct {
 typedef struct {
   Layer *layers;
   size_t count;
-} Neuron_network;
+} Neural_net;
 
-Neuron_network init_neuron_network(size_t *arch, size_t n_arch);
-void free_neuron_network(Neuron_network nn);
-void neuron_network_randomize(Neuron_network nn);
-Matrix neuron_network_forward(Neuron_network nn, Matrix input);
-void neuron_network_train(Neuron_network *nn, Matrix input, Matrix expectation,
-                          float lr);
-float neuron_network_loss(Neuron_network nn, Matrix input, Matrix expectation);
-// Derivative of the loss of a neuron network
-float neuron_network_dloss(Neuron_network nn, Matrix input, Matrix expectation);
-void neuron_network_print(Neuron_network nn);
+Neural_net init_neural_net(size_t *arch, size_t n_arch);
+void free_neural_net(Neural_net nn);
+void neural_net_randomize(Neural_net nn);
+Matrix neural_net_forward(Neural_net nn, Matrix input);
+void neural_net_train(Neural_net nn, Matrix input, Matrix expectation,
+                      float lr);
+float neural_net_loss(Neural_net nn, Matrix input, Matrix expectation);
+void neural_net_print(Neural_net nn);
 
 #endif // NEURON_H_
 
@@ -59,8 +59,8 @@ void softmax(float *inputs, int size) {
     inputs[i] /= sum;
 }
 
-Neuron_network init_neuron_network(size_t *arch, size_t n_arch) {
-  Neuron_network nn = {0};
+Neural_net init_neural_net(size_t *arch, size_t n_arch) {
+  Neural_net nn = {0};
 
   nn.count = n_arch - 1;
   nn.layers = calloc(nn.count, sizeof(Layer));
@@ -77,10 +77,10 @@ Neuron_network init_neuron_network(size_t *arch, size_t n_arch) {
   return nn;
 }
 
-// TASK(20260405-214436): Implement free_neuron_network
-void free_neuron_network(Neuron_network nn) {};
+// TASK(20260405-214436): Implement free_neural_net
+void free_neural_net(Neural_net nn) {};
 
-void neuron_network_randomize(Neuron_network nn) {
+void neural_net_randomize(Neural_net nn) {
   for (size_t i = 0; i < nn.count; ++i) {
     for (size_t j = 0;
          j < nn.layers[i].weights.rows * nn.layers[i].weights.cols; ++j) {
@@ -90,7 +90,7 @@ void neuron_network_randomize(Neuron_network nn) {
   }
 }
 
-Matrix neuron_network_forward(Neuron_network nn, Matrix input) {
+Matrix neural_net_forward(Neural_net nn, Matrix input) {
   Matrix current_input = input;
 
   for (size_t i = 0; i < nn.count; ++i) {
@@ -108,26 +108,25 @@ Matrix neuron_network_forward(Neuron_network nn, Matrix input) {
   return nn.layers[nn.count - 1].output;
 }
 
-void neuron_network_train(Neuron_network *nn, Matrix input, Matrix expectation,
-                          float lr) {
-  neuron_network_forward(*nn, input);
+void neural_net_train(Neural_net nn, Matrix input, Matrix expectation,
+                      float lr) {
+  neural_net_forward(nn, input);
 
-  Matrix *errors = calloc(nn->count, sizeof(Matrix));
-  for (size_t i = 0; i < nn->count; i++) {
-    errors[i] = init_matrix(1, nn->layers[i].output.cols);
+  // Errors for each hidden/output layer
+  // Error = (Expectation - Output)
+  Matrix *errors = calloc(nn.count, sizeof(Matrix));
+  for (size_t i = 0; i < nn.count; i++) {
+    errors[i] = init_matrix(1, nn.layers[i].output.cols);
   }
 
-  Layer *output_layer = &nn->layers[nn->count - 1];
-  for (size_t i = 0; i < output_layer->output.cols; i++) {
-    // Error = (Expectation - Output)
-    errors[nn->count - 1].data[i] =
-        expectation.data[i] - output_layer->output.data[i];
-  }
+  for (size_t i = 0; i < output_layer(nn).output.cols; i++)
+    errors[nn.count - 1].data[i] =
+        expectation.data[i] - output_layer(nn).output.data[i];
 
   // Backpropagation
-  for (int i = nn->count - 1; i >= 0; i--) {
-    Layer *l = &nn->layers[i];
-    Matrix current_input = (i == 0) ? input : nn->layers[i - 1].output;
+  for (int i = nn.count - 1; i >= 0; i--) {
+    Layer *l = &nn.layers[i];
+    Matrix current_input = (i == 0) ? input : nn.layers[i - 1].output;
     Matrix current_error = errors[i];
 
     for (size_t j = 0; j < l->weights.cols; j++) {
@@ -141,7 +140,7 @@ void neuron_network_train(Neuron_network *nn, Matrix input, Matrix expectation,
     }
 
     if (i > 0) {
-      Layer *prev_layer = &nn->layers[i - 1];
+      Layer *prev_layer = &nn.layers[i - 1];
       Matrix prev_error = errors[i - 1];
 
       for (size_t j = 0; j < prev_layer->output.cols; j++) {
@@ -154,13 +153,13 @@ void neuron_network_train(Neuron_network *nn, Matrix input, Matrix expectation,
     }
   }
 
-  for (size_t i = 0; i < nn->count; i++)
+  for (size_t i = 0; i < nn.count; i++)
     free_matrix(errors[i]);
   free(errors);
 }
 
-float neuron_network_loss(Neuron_network nn, Matrix input, Matrix expectation) {
-  Matrix output = neuron_network_forward(nn, input);
+float neural_net_loss(Neural_net nn, Matrix input, Matrix expectation) {
+  Matrix output = neural_net_forward(nn, input);
 
   assert(output.cols == expectation.cols);
   assert(output.rows == expectation.rows);
@@ -176,7 +175,7 @@ float neuron_network_loss(Neuron_network nn, Matrix input, Matrix expectation) {
   return loss / (float)n;
 }
 
-void neuron_network_print(Neuron_network nn) {
+void neural_net_print(Neural_net nn) {
   printf("Layers: %zu\n", nn.count);
 
   for (size_t i = 0; i < nn.count; ++i) {

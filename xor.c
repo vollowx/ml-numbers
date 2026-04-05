@@ -14,8 +14,8 @@ int main(void) {
   // - Layer 1: 2 neurons
   // - Layer 2: 1 neuron
   size_t arch[] = {2, 2, 1};
-  Neuron_network nn = init_neuron_network(arch, sizeof(arch) / sizeof(arch[0]));
-  neuron_network_randomize(nn);
+  Neural_net nn = init_neural_net(arch, sizeof(arch) / sizeof(arch[0]));
+  neural_net_randomize(nn);
 
   Matrix inputs[4];
   Matrix targets[4];
@@ -45,29 +45,29 @@ int main(void) {
 
   for (int e = 0; e < epochs; ++e) {
     int i = rand() % 4; // Stochastic gradient descent
-    neuron_network_train(&nn, inputs[i], targets[i], lr);
+    neural_net_train(nn, inputs[i], targets[i], lr);
 
     if (e % 5000 == 0) {
-      float loss = neuron_network_loss(nn, inputs[i], targets[i]);
+      float loss = neural_net_loss(nn, inputs[i], targets[i]);
       printf("Epoch %d, Current Sample Loss: %f\n", e, loss);
     }
   }
 
   printf("\nResults:\n");
   for (int i = 0; i < 4; ++i) {
-    Matrix out = neuron_network_forward(nn, inputs[i]);
+    Matrix out = neural_net_forward(nn, inputs[i]);
     printf("[%.0f, %.0f] -> %f (expected: %.0f)\n", inputs[i].data[0],
            inputs[i].data[1], out.data[0], targets[i].data[0]);
   }
 
-  neuron_network_print(nn);
+  neural_net_print(nn);
 
   // 5. Cleanup
   for (int i = 0; i < 4; ++i) {
     free_matrix(inputs[i]);
     free_matrix(targets[i]);
   }
-  free_neuron_network(nn);
+  free_neural_net(nn);
 
   return 0;
 

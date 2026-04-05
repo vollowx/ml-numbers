@@ -2,6 +2,7 @@
 
 - https://en.wikipedia.org/wiki/Matrix_(mathematics)
 - https://en.wikipedia.org/wiki/Dot_product
+- https://en.wikipedia.org/wiki/Gradient
 
 - [x] Use matrix transposing when calculating dot product
 - [ ] Use Lisp to instruct
