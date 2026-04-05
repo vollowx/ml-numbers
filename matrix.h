@@ -1,5 +1,5 @@
-#ifndef MATRIX_H_
-#define MATRIX_H_
+#ifndef MATRIX_H
+#define MATRIX_H
 
 #include <stdlib.h>
 
@@ -23,6 +23,8 @@ void matrix_mul_transpose_b(Matrix out, Matrix a, Matrix b);
 #endif // MATRIX_H_
 
 #ifdef MATRIX_IMPLEMENTATION
+#ifndef MATRIX_IMPLEMENTATION_ONCE
+#define MATRIX_IMPLEMENTATION_ONCE
 
 #include <assert.h>
 #include <string.h>
@@ -113,4 +115,5 @@ void matrix_mul_transpose_b(Matrix out, Matrix a, Matrix b) {
   free_matrix(bT);
 }
 
+#endif // MATRIX_IMPLEMENTATION_ONCE
 #endif // MATRIX_IMPLEMENTATION
