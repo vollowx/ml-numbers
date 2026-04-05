@@ -14,8 +14,15 @@ typedef struct {
 Matrix init_matrix(size_t rows, size_t cols);
 void free_matrix(Matrix m);
 Matrix matrix_transpose(Matrix m);
-void matrix_plus(Matrix out, Matrix a, Matrix b);
-void matrix_plus_inplace(Matrix out, Matrix b);
+
+void matrix_add(Matrix out, Matrix a, Matrix b); // TODO: Implement
+void matrix_add_inplace(Matrix out, Matrix b);
+void matrix_sub(Matrix out, Matrix a, Matrix b); // TODO: Implement
+void matrix_sub_inplace(Matrix out, Matrix b);
+
+void matrix_mul_scalar(Matrix out, Matrix m, float s); // TODO: Implement
+void matrix_mul_scalar_inplace(Matrix out, float s);
+
 void matrix_mul(Matrix out, Matrix a, Matrix b);
 void matrix_mul_transposed_b(Matrix out, Matrix a, Matrix bT);
 void matrix_mul_transpose_b(Matrix out, Matrix a, Matrix b);
@@ -53,13 +60,28 @@ Matrix matrix_transpose(Matrix m) {
   return out;
 }
 
-void matrix_plus_inplace(Matrix out, Matrix b) {
+void matrix_add_inplace(Matrix out, Matrix b) {
   assert(out.rows == b.rows);
   assert(out.cols == b.cols);
 
   size_t size = out.rows * out.cols;
   for (size_t i = 0; i < size; ++i)
     out.data[i] += b.data[i];
+}
+
+void matrix_sub_inplace(Matrix out, Matrix b) {
+  assert(out.rows == b.rows);
+  assert(out.cols == b.cols);
+
+  size_t size = out.rows * out.cols;
+  for (size_t i = 0; i < size; ++i)
+    out.data[i] -= b.data[i];
+}
+
+void matrix_mul_scalar_inplace(Matrix out, float s) {
+  size_t size = out.rows * out.cols;
+  for (size_t i = 0; i < size; ++i)
+    out.data[i] *= s;
 }
 
 // General matrix-matrix multiplication

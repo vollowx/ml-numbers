@@ -96,7 +96,7 @@ Matrix neuron_network_forward(Neuron_network nn, Matrix input) {
   for (size_t i = 0; i < nn.count; ++i) {
     Layer *l = &nn.layers[i];
     matrix_mul(l->output, current_input, l->weights);
-    matrix_plus_inplace(l->output, l->biases);
+    matrix_add_inplace(l->output, l->biases);
 
     for (size_t j = 0; j < l->output.rows * l->output.cols; ++j) {
       l->output.data[j] = sigmoidf(l->output.data[j]);
