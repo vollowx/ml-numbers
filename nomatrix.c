@@ -1,3 +1,5 @@
+// This is the original version of number recognition, without matrix.
+
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
