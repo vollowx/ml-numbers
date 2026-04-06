@@ -80,7 +80,7 @@ Nnet init_nnet(size_t *arch, size_t n_arch) {
 }
 
 void free_nnet(Nnet nn) {
-  for (int i = 0; i < nn.n_layer; ++i) {
+  for (size_t i = 0; i < nn.n_layer; ++i) {
     free_matrix(nn.layers[i].w);
     free_matrix(nn.layers[i].b);
     free_matrix(nn.layers[i].a);

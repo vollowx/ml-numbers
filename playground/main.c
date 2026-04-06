@@ -51,7 +51,7 @@ void read_grid(FILE *fp, Matrix matrix) {
   }
 }
 
-int main(int argc, char **argv) {
+int main(void) {
   Numbers dataset = {0};
   Matrix expected_output[10];
   for (int num = 0; num < 10; ++num) {
@@ -76,7 +76,6 @@ int main(int argc, char **argv) {
     if (strcmp(cmd, "append") == 0) {
       Number number = {0};
       number.input = init_matrix(1, 64);
-      int label;
       read_grid(fp, number.input);
       fscanf(fp, "%s %d", dummy, &number.label);
 
@@ -90,7 +89,7 @@ int main(int argc, char **argv) {
       Matrix output = nnet_forward(nn, test_input);
 
       int prediction = -1;
-      for (int n = 1; n < output.cols; n++)
+      for (size_t n = 1; n < output.cols; n++)
         if (output.data[n] > output.data[prediction])
           prediction = n;
 
@@ -100,7 +99,7 @@ int main(int argc, char **argv) {
       printf("\n");
 
       printf("Output = [ ");
-      for (int i = 0; i < output.cols; ++i)
+      for (size_t i = 0; i < output.cols; ++i)
         printf("%f ", output.data[i]);
       printf("]\n");
 
@@ -112,9 +111,7 @@ int main(int argc, char **argv) {
 
       printf("pretraining started for %d epoches\n", epoches);
 
-      float cost;
       for (int epoch = 0; epoch < epoches; ++epoch) {
-        cost = 0;
         for (int num = 0; num < 10; ++num) {
           for (int sample = 0; sample < 3; ++sample) {
             nnet_gradient(g, nn, dataset.items[num * 3 + sample].input,
@@ -129,18 +126,19 @@ int main(int argc, char **argv) {
                epoch);
       }
 
+      float final_cost = 0;
       for (int num = 0; num < 10; ++num) {
         for (int sample = 0; sample < 3; ++sample) {
-          cost += nnet_cost(nn, dataset.items[num * 3 + sample].input,
-                            expected_output[num]);
+          final_cost += nnet_cost(nn, dataset.items[num * 3 + sample].input,
+                                  expected_output[num]);
         }
       }
 
-      cost /= 30;
+      final_cost /= 30;
 
       printf("\033[1F");
       printf("pretraining completed for %d epoches, final cost: %f\n", epoches,
-             cost);
+             final_cost);
     } else if (strcmp(cmd, "---") == 0) {
       printf("---\n");
     } else if (strcmp(cmd, "rand") == 0) {

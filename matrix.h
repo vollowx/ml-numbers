@@ -97,11 +97,11 @@ void matrix_mul(Matrix out, Matrix a, Matrix b) {
 
   memset(out.data, 0, out.rows * out.cols * sizeof(float));
 
-  for (int i = 0; i < a.rows; ++i) {
-    for (int k = 0; k < a.cols; ++k) {
+  for (size_t i = 0; i < a.rows; ++i) {
+    for (size_t k = 0; k < a.cols; ++k) {
       float temp_a = matrix_at(a, i, k);
 
-      for (int j = 0; j < b.cols; ++j) {
+      for (size_t j = 0; j < b.cols; ++j) {
         matrix_at(out, i, j) += temp_a * matrix_at(b, k, j);
       }
     }
@@ -116,10 +116,10 @@ void matrix_mul_transposed_b(Matrix out, Matrix a, Matrix bT) {
 
   memset(out.data, 0, out.rows * out.cols * sizeof(float));
 
-  for (int i = 0; i < a.rows; ++i) {
-    for (int j = 0; j < bT.rows; ++j) {
+  for (size_t i = 0; i < a.rows; ++i) {
+    for (size_t j = 0; j < bT.rows; ++j) {
       float sum = 0;
-      for (int k = 0; k < a.cols; ++k) {
+      for (size_t k = 0; k < a.cols; ++k) {
         sum += matrix_at(a, i, k) * matrix_at_transposed(bT, k, j);
       }
       matrix_at(out, i, j) = sum;
