@@ -29,9 +29,6 @@ Nnet init_nnet(size_t *arch, size_t n_arch);
 void free_nnet(Nnet nn);
 void nnet_randomize(Nnet nn);
 Matrix nnet_forward(Nnet nn, Matrix input);
-// Deprecated
-void nnet_train(Nnet nn, Matrix input, Matrix expectation, float lr,
-                Matrix *errors);
 void nnet_gradient(Nnet g, Nnet nn, Matrix input, Matrix expectation, float lr,
                    Matrix *errors);
 void nnet_add(Nnet out, Nnet a, Nnet b);
@@ -117,45 +114,6 @@ Matrix nnet_forward(Nnet nn, Matrix input) {
   }
 
   return nn.layers[nn.count - 1].a;
-}
-
-void nnet_train(Nnet nn, Matrix input, Matrix expectation, float lr,
-                Matrix *errors) {
-  nnet_forward(nn, input);
-  for (int i = nn.count - 1; i >= 0; i--) {
-    Layer *crt_layer = &nn.layers[i];
-    Matrix crt_input = (i == 0) ? input : nn.layers[i - 1].a;
-    Matrix crt_error = errors[i];
-
-    for (size_t j = 0; j < crt_layer->w.cols; j++) {
-      if (i == (int)nn.count - 1)
-        crt_error.data[j] = expectation.data[j] - crt_layer->a.data[j];
-
-      float gradient = crt_error.data[j] * dsigmoidf(crt_layer->a.data[j]) * lr;
-
-      for (size_t k = 0; k < crt_layer->w.rows; ++k)
-        matrix_at(crt_layer->w, k, j) += gradient * crt_input.data[k];
-      crt_layer->b.data[j] += gradient;
-    }
-
-    // Backpropagation baby
-    if (i > 0) {
-      Layer *prv_layer = &nn.layers[i - 1];
-      Matrix prv_error = errors[i - 1];
-
-      for (size_t j = 0; j < prv_layer->a.cols; j++) {
-        float err_sum = 0.0f;
-        for (size_t k = 0; k < crt_layer->w.cols; k++) {
-          //   error of the kth neuron   the weight of the kth neuron of the
-          //   current layer for that specific input (previous output)
-          err_sum += crt_error.data[k] * matrix_at(crt_layer->w, j, k);
-        }
-        // that specific input (previous output) indicates has one-by-one
-        // relationship with the previous neurons
-        prv_error.data[j] = err_sum;
-      }
-    }
-  }
 }
 
 void nnet_gradient(Nnet g, Nnet nn, Matrix input, Matrix expectation, float lr,
