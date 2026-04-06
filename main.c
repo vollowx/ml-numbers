@@ -112,18 +112,13 @@ int main(int argc, char **argv) {
 
       printf("pretraining started for %d epoches\n", epoches);
 
-      Matrix *errors = calloc(nn.count, sizeof(Matrix));
-      for (size_t i = 0; i < nn.count; i++) {
-        errors[i] = init_matrix(1, nn.layers[i].a.cols);
-      }
-
       float loss;
       for (int epoch = 0; epoch < epoches; ++epoch) {
         loss = 0;
         for (int num = 0; num < 10; ++num) {
           for (int sample = 0; sample < 3; ++sample) {
             nnet_gradient(g, nn, dataset.items[num * 3 + sample].input,
-                          expected_output[num], lr, errors);
+                          expected_output[num], lr);
             nnet_add_inplace(nn, g);
           }
         }
@@ -140,10 +135,6 @@ int main(int argc, char **argv) {
                             expected_output[num]);
         }
       }
-
-      for (size_t i = 0; i < nn.count; i++)
-        free_matrix(errors[i]);
-      free(errors);
 
       printf("\033[1F");
       printf("pretraining completed for %d epoches, final loss: %f\n", epoches,

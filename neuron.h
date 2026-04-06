@@ -3,7 +3,7 @@
 
 #include "matrix.h"
 
-#define output_layer(nn) nn.layers[nn.count - 1]
+#define output_layer(nn) nn.layers[nn.n_layer - 1]
 
 float sigmoid(double x);
 float sigmoidf(float x);
@@ -21,7 +21,7 @@ typedef struct {
 
 typedef struct {
   Layer *layers;
-  size_t count;
+  size_t n_layer;
 } Nnet;
 
 // Allocation included
@@ -29,8 +29,7 @@ Nnet init_nnet(size_t *arch, size_t n_arch);
 void free_nnet(Nnet nn);
 void nnet_randomize(Nnet nn);
 Matrix nnet_forward(Nnet nn, Matrix input);
-void nnet_gradient(Nnet g, Nnet nn, Matrix input, Matrix expectation, float lr,
-                   Matrix *errors);
+void nnet_gradient(Nnet g, Nnet nn, Matrix input, Matrix expectation, float lr);
 void nnet_add(Nnet out, Nnet a, Nnet b);
 void nnet_add_inplace(Nnet out, Nnet b);
 float nnet_loss(Nnet nn, Matrix input, Matrix expectation);
@@ -65,10 +64,10 @@ void softmax(float *inputs, int size) {
 Nnet init_nnet(size_t *arch, size_t n_arch) {
   Nnet nn = {0};
 
-  nn.count = n_arch - 1;
-  nn.layers = calloc(nn.count, sizeof(Layer));
+  nn.n_layer = n_arch - 1;
+  nn.layers = calloc(nn.n_layer, sizeof(Layer));
 
-  for (size_t i = 0; i < nn.count; ++i) {
+  for (size_t i = 0; i < nn.n_layer; ++i) {
     size_t n_input = arch[i];
     size_t n_neuron = arch[i + 1];
 
@@ -81,7 +80,7 @@ Nnet init_nnet(size_t *arch, size_t n_arch) {
 }
 
 void free_nnet(Nnet nn) {
-  for (int i = 0; i < nn.count; ++i) {
+  for (int i = 0; i < nn.n_layer; ++i) {
     free_matrix(nn.layers[i].w);
     free_matrix(nn.layers[i].b);
     free_matrix(nn.layers[i].a);
@@ -90,7 +89,7 @@ void free_nnet(Nnet nn) {
 };
 
 void nnet_randomize(Nnet nn) {
-  for (size_t i = 0; i < nn.count; ++i) {
+  for (size_t i = 0; i < nn.n_layer; ++i) {
     for (size_t j = 0; j < nn.layers[i].w.rows * nn.layers[i].w.cols; ++j) {
       // (-0.5, 0.5)
       nn.layers[i].w.data[j] = ((float)rand() / (float)RAND_MAX) - 0.5f;
@@ -101,7 +100,7 @@ void nnet_randomize(Nnet nn) {
 Matrix nnet_forward(Nnet nn, Matrix input) {
   Matrix crt_input = input;
 
-  for (size_t i = 0; i < nn.count; ++i) {
+  for (size_t i = 0; i < nn.n_layer; ++i) {
     Layer *l = &nn.layers[i];
     matrix_mul(l->a, crt_input, l->w);
     matrix_add_inplace(l->a, l->b);
@@ -113,53 +112,55 @@ Matrix nnet_forward(Nnet nn, Matrix input) {
     crt_input = l->a;
   }
 
-  return nn.layers[nn.count - 1].a;
+  return nn.layers[nn.n_layer - 1].a;
 }
 
-void nnet_gradient(Nnet g, Nnet nn, Matrix input, Matrix expectation, float lr,
-                   Matrix *errors) {
+void nnet_gradient(Nnet g, Nnet nn, Matrix input, Matrix expectation,
+                   float lr) {
+  // The `a` of layers of `g` is used as the error container
+
   nnet_forward(nn, input);
-  for (int i = nn.count - 1; i >= 0; i--) {
+  for (int i = nn.n_layer - 1; i >= 0; i--) {
     Layer *crt_layer_g = &g.layers[i];
     Layer *crt_layer = &nn.layers[i];
     Matrix crt_input = (i == 0) ? input : nn.layers[i - 1].a;
-    Matrix crt_error = errors[i];
 
     for (size_t j = 0; j < crt_layer->w.cols; j++) {
-      if (i == (int)nn.count - 1)
-        crt_error.data[j] = expectation.data[j] - crt_layer->a.data[j];
+      if (i == (int)nn.n_layer - 1)
+        crt_layer_g->a.data[j] = expectation.data[j] - crt_layer->a.data[j];
 
-      float gradient = crt_error.data[j] * dsigmoidf(crt_layer->a.data[j]) * lr;
+      float gradient =
+          crt_layer_g->a.data[j] * dsigmoidf(crt_layer->a.data[j]) * lr;
 
       for (size_t k = 0; k < crt_layer->w.rows; ++k)
         matrix_at(crt_layer_g->w, k, j) = gradient * crt_input.data[k];
       crt_layer_g->b.data[j] = gradient;
     }
 
-    // Backpropagation baby
+    // Backpropagation
     if (i > 0) {
+      Layer *prv_layer_g = &g.layers[i - 1];
       Layer *prv_layer = &nn.layers[i - 1];
-      Matrix prv_error = errors[i - 1];
 
       for (size_t j = 0; j < prv_layer->a.cols; j++) {
         float err_sum = 0.0f;
         for (size_t k = 0; k < crt_layer->w.cols; k++) {
           //   error of the kth neuron   the weight of the kth neuron of the current layer for that specific input (previous output)
-          err_sum += crt_error.data[k] * matrix_at(crt_layer->w, j, k);
+          err_sum += crt_layer_g->a.data[k] * matrix_at(crt_layer->w, j, k);
         }
         // that specific input (previous output) indicates has one-by-one
         // relationship with the previous neurons
-        prv_error.data[j] = err_sum;
+        prv_layer_g->a.data[j] = err_sum;
       }
     }
   }
 }
 
 void nnet_add_inplace(Nnet out, Nnet b) {
-  assert(out.count == b.count);
+  assert(out.n_layer == b.n_layer);
   // Assume that the architectures equal
 
-  for (size_t i = 0; i < out.count; i++) {
+  for (size_t i = 0; i < out.n_layer; i++) {
     Layer *l_out = &out.layers[i];
     Layer *l_b = &b.layers[i];
 
@@ -189,9 +190,9 @@ float nnet_loss(Nnet nn, Matrix input, Matrix expectation) {
 }
 
 void nnet_print(Nnet nn) {
-  printf("Layers: %zu\n", nn.count);
+  printf("Layers: %zu\n", nn.n_layer);
 
-  for (size_t i = 0; i < nn.count; ++i) {
+  for (size_t i = 0; i < nn.n_layer; ++i) {
     Layer l = nn.layers[i];
     printf("Layer %zu:\n", i + 1);
 
