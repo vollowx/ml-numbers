@@ -32,7 +32,7 @@ Matrix nnet_forward(Nnet nn, Matrix input);
 void nnet_gradient(Nnet g, Nnet nn, Matrix input, Matrix expectation, float lr);
 void nnet_add(Nnet out, Nnet a, Nnet b);
 void nnet_add_inplace(Nnet out, Nnet b);
-float nnet_loss(Nnet nn, Matrix input, Matrix expectation);
+float nnet_cost(Nnet nn, Matrix input, Matrix expectation);
 void nnet_print(Nnet nn);
 
 #endif // NEURON_H_
@@ -143,14 +143,15 @@ void nnet_gradient(Nnet g, Nnet nn, Matrix input, Matrix expectation,
       Layer *prv_layer = &nn.layers[i - 1];
 
       for (size_t j = 0; j < prv_layer->a.cols; j++) {
-        float err_sum = 0.0f;
+        prv_layer_g->a.data[j] = 0;
         for (size_t k = 0; k < crt_layer->w.cols; k++) {
-          //   error of the kth neuron   the weight of the kth neuron of the current layer for that specific input (previous output)
-          err_sum += crt_layer_g->a.data[k] * matrix_at(crt_layer->w, j, k);
+          // Note that the gradient calculated has not yet been *2-ed,
+          // it is kind of unnecessary.
+          // How responsible the output of the previous layer is for the error
+          // on the current layer.
+          prv_layer_g->a.data[j] +=
+              crt_layer_g->a.data[k] * matrix_at(crt_layer->w, j, k);
         }
-        // that specific input (previous output) indicates has one-by-one
-        // relationship with the previous neurons
-        prv_layer_g->a.data[j] = err_sum;
       }
     }
   }
@@ -172,21 +173,21 @@ void nnet_add_inplace(Nnet out, Nnet b) {
   }
 }
 
-float nnet_loss(Nnet nn, Matrix input, Matrix expectation) {
+float nnet_cost(Nnet nn, Matrix input, Matrix expectation) {
   Matrix output = nnet_forward(nn, input);
 
   assert(output.cols == expectation.cols);
   assert(output.rows == expectation.rows);
 
-  float loss = 0.0f;
+  float cost = 0.0f;
   size_t n = output.rows * output.cols;
 
   for (size_t i = 0; i < n; ++i) {
     float error = expectation.data[i] - output.data[i];
-    loss += error * error;
+    cost += error * error;
   }
 
-  return loss / (float)n;
+  return cost / (float)n;
 }
 
 void nnet_print(Nnet nn) {

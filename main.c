@@ -112,9 +112,9 @@ int main(int argc, char **argv) {
 
       printf("pretraining started for %d epoches\n", epoches);
 
-      float loss;
+      float cost;
       for (int epoch = 0; epoch < epoches; ++epoch) {
-        loss = 0;
+        cost = 0;
         for (int num = 0; num < 10; ++num) {
           for (int sample = 0; sample < 3; ++sample) {
             nnet_gradient(g, nn, dataset.items[num * 3 + sample].input,
@@ -131,14 +131,16 @@ int main(int argc, char **argv) {
 
       for (int num = 0; num < 10; ++num) {
         for (int sample = 0; sample < 3; ++sample) {
-          loss += nnet_loss(nn, dataset.items[num * 3 + sample].input,
+          cost += nnet_cost(nn, dataset.items[num * 3 + sample].input,
                             expected_output[num]);
         }
       }
 
+      cost /= 30;
+
       printf("\033[1F");
-      printf("pretraining completed for %d epoches, final loss: %f\n", epoches,
-             loss);
+      printf("pretraining completed for %d epoches, final cost: %f\n", epoches,
+             cost);
     } else if (strcmp(cmd, "---") == 0) {
       printf("---\n");
     } else if (strcmp(cmd, "rand") == 0) {

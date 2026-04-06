@@ -45,17 +45,17 @@ int main(void) {
     nnet_gradient(g, nn, inputs[i], expectations[i], lr);
     nnet_add_inplace(nn, g);
 
-    if (e % 5000 == 0) {
-      float loss = nnet_loss(nn, inputs[i], expectations[i]);
-      printf("Epoch %d, Current Sample Loss: %f\n", e, loss);
-    }
+    if (e % 5000 == 0)
+      printf("Epoch %d, Current cost: %f\n", e,
+             nnet_cost(nn, inputs[i], expectations[i]));
   }
 
   printf("\ntest\n");
   for (int i = 0; i < 4; ++i) {
     Matrix out = nnet_forward(nn, inputs[i]);
-    printf("[ %.0f, %.0f ] -> <NN> -> [ %f ] (expect %.0f)\n", inputs[i].data[0],
-           inputs[i].data[1], out.data[0], expectations[i].data[0]);
+    printf("[ %.0f, %.0f ] -> <NN> -> [ %f ] (expect %.0f)\n",
+           inputs[i].data[0], inputs[i].data[1], out.data[0],
+           expectations[i].data[0]);
   }
 
   nnet_print(nn);
