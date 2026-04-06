@@ -22,21 +22,21 @@ typedef struct {
 typedef struct {
   Layer *layers;
   size_t count;
-} Neural_net;
+} Nnet;
 
-Neural_net init_neural_net(size_t *arch, size_t n_arch);
-void free_neural_net(Neural_net nn);
-void neural_net_randomize(Neural_net nn);
-Matrix neural_net_forward(Neural_net nn, Matrix input);
+Nnet init_nnet(size_t *arch, size_t n_arch);
+void free_nnet(Nnet nn);
+void nnet_randomize(Nnet nn);
+Matrix nnet_forward(Nnet nn, Matrix input);
 // Deprecated
-void neural_net_train(Neural_net nn, Matrix input, Matrix expectation, float lr,
-                      Matrix *errors);
-void neural_net_gradient(Neural_net g, Neural_net nn, Matrix input,
-                         Matrix expectation, float lr, Matrix *errors);
-void neural_net_add(Neural_net out, Neural_net a, Neural_net b);
-void neural_net_add_inplace(Neural_net out, Neural_net b);
-float neural_net_loss(Neural_net nn, Matrix input, Matrix expectation);
-void neural_net_print(Neural_net nn);
+void nnet_train(Nnet nn, Matrix input, Matrix expectation, float lr,
+                Matrix *errors);
+void nnet_gradient(Nnet g, Nnet nn, Matrix input, Matrix expectation, float lr,
+                   Matrix *errors);
+void nnet_add(Nnet out, Nnet a, Nnet b);
+void nnet_add_inplace(Nnet out, Nnet b);
+float nnet_loss(Nnet nn, Matrix input, Matrix expectation);
+void nnet_print(Nnet nn);
 
 #endif // NEURON_H_
 
@@ -64,8 +64,8 @@ void softmax(float *inputs, int size) {
     inputs[i] /= sum;
 }
 
-Neural_net init_neural_net(size_t *arch, size_t n_arch) {
-  Neural_net nn = {0};
+Nnet init_nnet(size_t *arch, size_t n_arch) {
+  Nnet nn = {0};
 
   nn.count = n_arch - 1;
   nn.layers = calloc(nn.count, sizeof(Layer));
@@ -82,10 +82,10 @@ Neural_net init_neural_net(size_t *arch, size_t n_arch) {
   return nn;
 }
 
-// TASK(20260405-214436): Implement free_neural_net
-void free_neural_net(Neural_net nn) {};
+// TASK(20260405-214436): Implement free_nnet
+void free_nnet(Nnet nn) {};
 
-void neural_net_randomize(Neural_net nn) {
+void nnet_randomize(Nnet nn) {
   for (size_t i = 0; i < nn.count; ++i) {
     for (size_t j = 0; j < nn.layers[i].w.rows * nn.layers[i].w.cols; ++j) {
       // (-0.5, 0.5)
@@ -94,7 +94,7 @@ void neural_net_randomize(Neural_net nn) {
   }
 }
 
-Matrix neural_net_forward(Neural_net nn, Matrix input) {
+Matrix nnet_forward(Nnet nn, Matrix input) {
   Matrix crt_input = input;
 
   for (size_t i = 0; i < nn.count; ++i) {
@@ -112,9 +112,9 @@ Matrix neural_net_forward(Neural_net nn, Matrix input) {
   return nn.layers[nn.count - 1].a;
 }
 
-void neural_net_train(Neural_net nn, Matrix input, Matrix expectation, float lr,
-                      Matrix *errors) {
-  neural_net_forward(nn, input);
+void nnet_train(Nnet nn, Matrix input, Matrix expectation, float lr,
+                Matrix *errors) {
+  nnet_forward(nn, input);
   for (int i = nn.count - 1; i >= 0; i--) {
     Layer *crt_layer = &nn.layers[i];
     Matrix crt_input = (i == 0) ? input : nn.layers[i - 1].a;
@@ -151,9 +151,9 @@ void neural_net_train(Neural_net nn, Matrix input, Matrix expectation, float lr,
   }
 }
 
-void neural_net_gradient(Neural_net g, Neural_net nn, Matrix input,
-                         Matrix expectation, float lr, Matrix *errors) {
-  neural_net_forward(nn, input);
+void nnet_gradient(Nnet g, Nnet nn, Matrix input, Matrix expectation, float lr,
+                   Matrix *errors) {
+  nnet_forward(nn, input);
   for (int i = nn.count - 1; i >= 0; i--) {
     Layer *crt_layer_g = &g.layers[i];
     Layer *crt_layer = &nn.layers[i];
@@ -191,7 +191,7 @@ void neural_net_gradient(Neural_net g, Neural_net nn, Matrix input,
   }
 }
 
-void neural_net_add_inplace(Neural_net out, Neural_net b) {
+void nnet_add_inplace(Nnet out, Nnet b) {
   assert(out.count == b.count);
   // Assume that the architectures equal
 
@@ -207,8 +207,8 @@ void neural_net_add_inplace(Neural_net out, Neural_net b) {
   }
 }
 
-float neural_net_loss(Neural_net nn, Matrix input, Matrix expectation) {
-  Matrix output = neural_net_forward(nn, input);
+float nnet_loss(Nnet nn, Matrix input, Matrix expectation) {
+  Matrix output = nnet_forward(nn, input);
 
   assert(output.cols == expectation.cols);
   assert(output.rows == expectation.rows);
@@ -224,7 +224,7 @@ float neural_net_loss(Neural_net nn, Matrix input, Matrix expectation) {
   return loss / (float)n;
 }
 
-void neural_net_print(Neural_net nn) {
+void nnet_print(Nnet nn) {
   printf("Layers: %zu\n", nn.count);
 
   for (size_t i = 0; i < nn.count; ++i) {

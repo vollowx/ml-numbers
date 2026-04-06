@@ -53,8 +53,8 @@ void read_grid(FILE *fp, Matrix matrix) {
 
 int main(int argc, char **argv) {
   size_t arch[] = {64, 10};
-  Neural_net nn = init_neural_net(arch, sizeof(arch) / sizeof(arch[0]));
-  Neural_net g = init_neural_net(arch, sizeof(arch) / sizeof(arch[0]));
+  Nnet nn = init_nnet(arch, sizeof(arch) / sizeof(arch[0]));
+  Nnet g = init_nnet(arch, sizeof(arch) / sizeof(arch[0]));
 
   Numbers dataset = {0};
   Matrix expected_output[10];
@@ -87,7 +87,7 @@ int main(int argc, char **argv) {
       read_grid(fp, test_input);
       fscanf(fp, "%s %d", dummy, &expect);
 
-      Matrix output = neural_net_forward(nn, test_input);
+      Matrix output = nnet_forward(nn, test_input);
 
       int prediction = -1;
       for (int n = 1; n < output.cols; n++)
@@ -125,13 +125,13 @@ int main(int argc, char **argv) {
         loss = 0;
         for (int num = 0; num < 10; ++num) {
           for (int sample = 0; sample < 3; ++sample) {
-            neural_net_gradient(g, nn, dataset.items[num * 3 + sample].input,
-                                expected_output[num], lr, errors);
-            neural_net_add_inplace(nn, g);
+            nnet_gradient(g, nn, dataset.items[num * 3 + sample].input,
+                          expected_output[num], lr, errors);
+            nnet_add_inplace(nn, g);
           }
         }
-            // loss += neural_net_loss(nn, dataset.items[num * 3 + sample].input,
-            //                         expected_output[num]);
+        // loss += nnet_loss(nn, dataset.items[num * 3 + sample].input,
+        //                         expected_output[num]);
         printf("\033[F");
         printf("training, epoch %5d\n", epoch);
       }
@@ -150,9 +150,9 @@ int main(int argc, char **argv) {
       fscanf(fp, "%d", &seed);
       srand(seed == 0 ? time(0) : seed);
     } else if (strcmp(cmd, "nn_randomize") == 0) {
-      neural_net_randomize(nn);
+      nnet_randomize(nn);
     } else if (strcmp(cmd, "nn_print") == 0) {
-      neural_net_print(nn);
+      nnet_print(nn);
     } else if (strcmp(cmd, "print_dataset") == 0) {
       print_dataset(dataset);
     }
@@ -163,7 +163,7 @@ int main(int argc, char **argv) {
   da_foreach(Number, num, &dataset) { free_matrix(num->input); }
   da_free(dataset);
 
-  free_neural_net(nn);
+  free_nnet(nn);
 
   return 0;
 }
