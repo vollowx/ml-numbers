@@ -54,6 +54,7 @@ void read_grid(FILE *fp, Matrix matrix) {
 int main(int argc, char **argv) {
   size_t arch[] = {64, 10};
   Neural_net nn = init_neural_net(arch, sizeof(arch) / sizeof(arch[0]));
+  Neural_net g = init_neural_net(arch, sizeof(arch) / sizeof(arch[0]));
 
   Numbers dataset = {0};
   Matrix expected_output[10];
@@ -114,20 +115,30 @@ int main(int argc, char **argv) {
 
       printf("training started for %d epoches\n", epoches);
 
+      Matrix *errors = calloc(nn.count, sizeof(Matrix));
+      for (size_t i = 0; i < nn.count; i++) {
+        errors[i] = init_matrix(1, nn.layers[i].a.cols);
+      }
+
       float loss;
       for (int epoch = 0; epoch < epoches; ++epoch) {
         loss = 0;
         for (int num = 0; num < 10; ++num) {
           for (int sample = 0; sample < 3; ++sample) {
-            neural_net_train(nn, dataset.items[num * 3 + sample].input,
-                             expected_output[num], lr);
-            loss += neural_net_loss(nn, dataset.items[num * 3 + sample].input,
-                                    expected_output[num]);
+            neural_net_gradient(g, nn, dataset.items[num * 3 + sample].input,
+                                expected_output[num], lr, errors);
+            neural_net_add_inplace(nn, g);
           }
         }
+            // loss += neural_net_loss(nn, dataset.items[num * 3 + sample].input,
+            //                         expected_output[num]);
         printf("\033[F");
-        printf("training, epoch %5d, loss: %f\n", epoch, loss);
+        printf("training, epoch %5d\n", epoch);
       }
+
+      for (size_t i = 0; i < nn.count; i++)
+        free_matrix(errors[i]);
+      free(errors);
 
       printf("\033[F");
       printf("training completed for %d epoches, final loss: %f\033[0K\n",

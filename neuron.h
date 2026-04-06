@@ -14,9 +14,9 @@ float dsigmoidf(float x);
 void softmax(float *inputs, int size);
 
 typedef struct {
-  Matrix weights;
-  Matrix biases;
-  Matrix output;
+  Matrix w;
+  Matrix b;
+  Matrix a;
 } Layer;
 
 typedef struct {
@@ -28,8 +28,13 @@ Neural_net init_neural_net(size_t *arch, size_t n_arch);
 void free_neural_net(Neural_net nn);
 void neural_net_randomize(Neural_net nn);
 Matrix neural_net_forward(Neural_net nn, Matrix input);
-void neural_net_train(Neural_net nn, Matrix input, Matrix expectation,
-                      float lr);
+// Deprecated
+void neural_net_train(Neural_net nn, Matrix input, Matrix expectation, float lr,
+                      Matrix *errors);
+void neural_net_gradient(Neural_net g, Neural_net nn, Matrix input,
+                         Matrix expectation, float lr, Matrix *errors);
+void neural_net_add(Neural_net out, Neural_net a, Neural_net b);
+void neural_net_add_inplace(Neural_net out, Neural_net b);
 float neural_net_loss(Neural_net nn, Matrix input, Matrix expectation);
 void neural_net_print(Neural_net nn);
 
@@ -69,9 +74,9 @@ Neural_net init_neural_net(size_t *arch, size_t n_arch) {
     size_t n_input = arch[i];
     size_t n_neuron = arch[i + 1];
 
-    nn.layers[i].weights = init_matrix(n_input, n_neuron);
-    nn.layers[i].biases = init_matrix(1, n_neuron);
-    nn.layers[i].output = init_matrix(1, n_neuron);
+    nn.layers[i].w = init_matrix(n_input, n_neuron);
+    nn.layers[i].b = init_matrix(1, n_neuron);
+    nn.layers[i].a = init_matrix(1, n_neuron);
   }
 
   return nn;
@@ -82,80 +87,124 @@ void free_neural_net(Neural_net nn) {};
 
 void neural_net_randomize(Neural_net nn) {
   for (size_t i = 0; i < nn.count; ++i) {
-    for (size_t j = 0;
-         j < nn.layers[i].weights.rows * nn.layers[i].weights.cols; ++j) {
+    for (size_t j = 0; j < nn.layers[i].w.rows * nn.layers[i].w.cols; ++j) {
       // (-0.5, 0.5)
-      nn.layers[i].weights.data[j] = ((float)rand() / (float)RAND_MAX) - 0.5f;
+      nn.layers[i].w.data[j] = ((float)rand() / (float)RAND_MAX) - 0.5f;
     }
   }
 }
 
 Matrix neural_net_forward(Neural_net nn, Matrix input) {
-  Matrix current_input = input;
+  Matrix crt_input = input;
 
   for (size_t i = 0; i < nn.count; ++i) {
     Layer *l = &nn.layers[i];
-    matrix_mul(l->output, current_input, l->weights);
-    matrix_add_inplace(l->output, l->biases);
+    matrix_mul(l->a, crt_input, l->w);
+    matrix_add_inplace(l->a, l->b);
 
-    for (size_t j = 0; j < l->output.rows * l->output.cols; ++j) {
-      l->output.data[j] = sigmoidf(l->output.data[j]);
+    for (size_t j = 0; j < l->a.rows * l->a.cols; ++j) {
+      l->a.data[j] = sigmoidf(l->a.data[j]);
     }
 
-    current_input = l->output;
+    crt_input = l->a;
   }
 
-  return nn.layers[nn.count - 1].output;
+  return nn.layers[nn.count - 1].a;
 }
 
-void neural_net_train(Neural_net nn, Matrix input, Matrix expectation,
-                      float lr) {
+void neural_net_train(Neural_net nn, Matrix input, Matrix expectation, float lr,
+                      Matrix *errors) {
   neural_net_forward(nn, input);
-
-  // Errors for each hidden/output layer
-  // Error = (Expectation - Output)
-  Matrix *errors = calloc(nn.count, sizeof(Matrix));
-  for (size_t i = 0; i < nn.count; i++) {
-    errors[i] = init_matrix(1, nn.layers[i].output.cols);
-  }
-
-  for (size_t i = 0; i < output_layer(nn).output.cols; i++)
-    errors[nn.count - 1].data[i] =
-        expectation.data[i] - output_layer(nn).output.data[i];
-
-  // Backpropagation
   for (int i = nn.count - 1; i >= 0; i--) {
-    Layer *l = &nn.layers[i];
-    Matrix current_input = (i == 0) ? input : nn.layers[i - 1].output;
-    Matrix current_error = errors[i];
+    Layer *crt_layer = &nn.layers[i];
+    Matrix crt_input = (i == 0) ? input : nn.layers[i - 1].a;
+    Matrix crt_error = errors[i];
 
-    for (size_t j = 0; j < l->weights.cols; j++) {
-      float gradient =
-          current_error.data[j] * dsigmoidf(l->output.data[j]) * lr;
+    for (size_t j = 0; j < crt_layer->w.cols; j++) {
+      if (i == (int)nn.count - 1)
+        crt_error.data[j] = expectation.data[j] - crt_layer->a.data[j];
 
-      l->biases.data[j] += gradient;
-      for (size_t k = 0; k < l->weights.rows; k++) {
-        matrix_at(l->weights, k, j) += gradient * current_input.data[k];
-      }
+      float gradient = crt_error.data[j] * dsigmoidf(crt_layer->a.data[j]) * lr;
+
+      for (size_t k = 0; k < crt_layer->w.rows; ++k)
+        matrix_at(crt_layer->w, k, j) += gradient * crt_input.data[k];
+      crt_layer->b.data[j] += gradient;
     }
 
+    // Backpropagation baby
     if (i > 0) {
-      Layer *prev_layer = &nn.layers[i - 1];
-      Matrix prev_error = errors[i - 1];
+      Layer *prv_layer = &nn.layers[i - 1];
+      Matrix prv_error = errors[i - 1];
 
-      for (size_t j = 0; j < prev_layer->output.cols; j++) {
+      for (size_t j = 0; j < prv_layer->a.cols; j++) {
         float err_sum = 0.0f;
-        for (size_t k = 0; k < l->weights.cols; k++) {
-          err_sum += current_error.data[k] * matrix_at(l->weights, j, k);
+        for (size_t k = 0; k < crt_layer->w.cols; k++) {
+          //   error of the kth neuron   the weight of the kth neuron of the
+          //   current layer for that specific input (previous output)
+          err_sum += crt_error.data[k] * matrix_at(crt_layer->w, j, k);
         }
-        prev_error.data[j] = err_sum;
+        // that specific input (previous output) indicates has one-by-one
+        // relationship with the previous neurons
+        prv_error.data[j] = err_sum;
       }
     }
   }
+}
 
-  for (size_t i = 0; i < nn.count; i++)
-    free_matrix(errors[i]);
-  free(errors);
+void neural_net_gradient(Neural_net g, Neural_net nn, Matrix input,
+                         Matrix expectation, float lr, Matrix *errors) {
+  neural_net_forward(nn, input);
+  for (int i = nn.count - 1; i >= 0; i--) {
+    Layer *crt_layer_g = &g.layers[i];
+    Layer *crt_layer = &nn.layers[i];
+    Matrix crt_input = (i == 0) ? input : nn.layers[i - 1].a;
+    Matrix crt_error = errors[i];
+
+    for (size_t j = 0; j < crt_layer->w.cols; j++) {
+      if (i == (int)nn.count - 1)
+        crt_error.data[j] = expectation.data[j] - crt_layer->a.data[j];
+
+      float gradient = crt_error.data[j] * dsigmoidf(crt_layer->a.data[j]) * lr;
+
+      for (size_t k = 0; k < crt_layer->w.rows; ++k)
+        matrix_at(crt_layer_g->w, k, j) = gradient * crt_input.data[k];
+      crt_layer_g->b.data[j] = gradient;
+    }
+
+    // Backpropagation baby
+    if (i > 0) {
+      Layer *prv_layer = &nn.layers[i - 1];
+      Matrix prv_error = errors[i - 1];
+
+      for (size_t j = 0; j < prv_layer->a.cols; j++) {
+        float err_sum = 0.0f;
+        for (size_t k = 0; k < crt_layer->w.cols; k++) {
+          //   error of the kth neuron   the weight of the kth neuron of the
+          //   current layer for that specific input (previous output)
+          err_sum += crt_error.data[k] * matrix_at(crt_layer->w, j, k);
+        }
+        // that specific input (previous output) indicates has one-by-one
+        // relationship with the previous neurons
+        prv_error.data[j] = err_sum;
+      }
+    }
+  }
+}
+
+void neural_net_add_inplace(Neural_net out, Neural_net b) {
+  assert(out.count == b.count);
+  // Assume that the architectures equal
+
+  for (size_t i = 0; i < out.count; i++) {
+    Layer *l_out = &out.layers[i];
+    Layer *l_b = &b.layers[i];
+
+    for (size_t j = 0; j < l_out->w.rows * l_out->w.cols; j++)
+      l_out->w.data[j] += l_b->w.data[j];
+
+    for (size_t j = 0; j < l_out->b.rows * l_out->b.cols; j++)
+      l_out->b.data[j] += l_b->b.data[j];
+  }
 }
 
 float neural_net_loss(Neural_net nn, Matrix input, Matrix expectation) {
@@ -183,20 +232,20 @@ void neural_net_print(Neural_net nn) {
     printf("Layer %zu:\n", i + 1);
 
     // Print Weights
-    printf("  Weights (%zu x %zu):\n", l.weights.rows, l.weights.cols);
-    for (size_t r = 0; r < l.weights.rows; ++r) {
+    printf("  Weights (%zu x %zu):\n", l.w.rows, l.w.cols);
+    for (size_t r = 0; r < l.w.rows; ++r) {
       printf("    [ ");
-      for (size_t c = 0; c < l.weights.cols; ++c) {
-        printf("%6.3f ", matrix_at(l.weights, r, c));
+      for (size_t c = 0; c < l.w.cols; ++c) {
+        printf("%6.3f ", matrix_at(l.w, r, c));
       }
       printf("]\n");
     }
 
     // Print Biases
-    printf("  Biases (%zu x %zu):\n", l.biases.rows, l.biases.cols);
+    printf("  Biases (%zu x %zu):\n", l.b.rows, l.b.cols);
     printf("    [ ");
-    for (size_t c = 0; c < l.biases.cols; ++c) {
-      printf("%6.3f ", l.biases.data[c]);
+    for (size_t c = 0; c < l.b.cols; ++c) {
+      printf("%6.3f ", l.b.data[c]);
     }
     printf("]\n\n");
   }
