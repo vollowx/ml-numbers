@@ -11,8 +11,10 @@ typedef struct {
 
 #define matrix_at(matrix, row, col) matrix.data[row * matrix.cols + col]
 
+// Allocation included
 Matrix init_matrix(size_t rows, size_t cols);
 void free_matrix(Matrix m);
+// Allocation included
 Matrix matrix_transpose(Matrix m);
 
 void matrix_add(Matrix out, Matrix a, Matrix b); // TODO: Implement

@@ -24,6 +24,7 @@ typedef struct {
   size_t count;
 } Nnet;
 
+// Allocation included
 Nnet init_nnet(size_t *arch, size_t n_arch);
 void free_nnet(Nnet nn);
 void nnet_randomize(Nnet nn);
@@ -82,8 +83,14 @@ Nnet init_nnet(size_t *arch, size_t n_arch) {
   return nn;
 }
 
-// TASK(20260405-214436): Implement free_nnet
-void free_nnet(Nnet nn) {};
+void free_nnet(Nnet nn) {
+  for (int i = 0; i < nn.count; ++i) {
+    free_matrix(nn.layers[i].w);
+    free_matrix(nn.layers[i].b);
+    free_matrix(nn.layers[i].a);
+  }
+  free(nn.layers);
+};
 
 void nnet_randomize(Nnet nn) {
   for (size_t i = 0; i < nn.count; ++i) {

@@ -107,7 +107,6 @@ int main(int argc, char **argv) {
       printf("]\n");
 
       free_matrix(test_input);
-      free_matrix(output);
     } else if (strcmp(cmd, "nn_train") == 0) {
       int epoches;
       float lr;
@@ -164,6 +163,7 @@ int main(int argc, char **argv) {
   da_free(dataset);
 
   free_nnet(nn);
+  free_nnet(g);
 
   return 0;
 }
