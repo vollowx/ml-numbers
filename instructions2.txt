@@ -333,8 +333,8 @@ print_dataset
 ---
 
 rand 0
-nn_randomize
-nn_train 5000 1
+nn.randomize
+nn.pretrain 50000 0.1
 
 ---
 

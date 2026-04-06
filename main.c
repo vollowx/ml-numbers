@@ -52,16 +52,16 @@ void read_grid(FILE *fp, Matrix matrix) {
 }
 
 int main(int argc, char **argv) {
-  size_t arch[] = {64, 10};
-  Nnet nn = init_nnet(arch, sizeof(arch) / sizeof(arch[0]));
-  Nnet g = init_nnet(arch, sizeof(arch) / sizeof(arch[0]));
-
   Numbers dataset = {0};
   Matrix expected_output[10];
   for (int num = 0; num < 10; ++num) {
     expected_output[num] = init_matrix(1, 10);
     expected_output[num].data[num] = 1;
   }
+
+  size_t arch[] = {64, 16, 16, 10};
+  Nnet nn = init_nnet(arch, sizeof(arch) / sizeof(arch[0]));
+  Nnet g = init_nnet(arch, sizeof(arch) / sizeof(arch[0]));
 
   FILE *fp = fopen("instructions2.txt", "r");
   if (!fp) {
@@ -94,25 +94,23 @@ int main(int argc, char **argv) {
         if (output.data[n] > output.data[prediction])
           prediction = n;
 
-      if (prediction == expect)
-        printf("test: %d from %f ... √\n", prediction, output.data[prediction]);
-      else
-        printf("test: %d from %f ... ×, expected: %d\n", prediction,
-               output.data[prediction], expect);
+      printf("test expect %d, prediction is %d", expect, prediction);
+      if (prediction != expect)
+        printf("...Failing.");
+      printf("\n");
 
-      printf("\t\t\t\t\t[ ");
+      printf("Output = [ ");
       for (int i = 0; i < output.cols; ++i)
-        printf("\033[%dm%f\033[0m ", output.data[i] > 0.5 ? 32 : 90,
-               output.data[i]);
+        printf("%f ", output.data[i]);
       printf("]\n");
 
       free_matrix(test_input);
-    } else if (strcmp(cmd, "nn_train") == 0) {
+    } else if (strcmp(cmd, "nn.pretrain") == 0) {
       int epoches;
       float lr;
       fscanf(fp, "%d %f", &epoches, &lr);
 
-      printf("training started for %d epoches\n", epoches);
+      printf("pretraining started for %d epoches\n", epoches);
 
       Matrix *errors = calloc(nn.count, sizeof(Matrix));
       for (size_t i = 0; i < nn.count; i++) {
@@ -129,28 +127,36 @@ int main(int argc, char **argv) {
             nnet_add_inplace(nn, g);
           }
         }
-        // loss += nnet_loss(nn, dataset.items[num * 3 + sample].input,
-        //                         expected_output[num]);
-        printf("\033[F");
-        printf("training, epoch %5d\n", epoch);
+
+        if (epoch != 0)
+          printf("\033[1F");
+        printf("pretraining in progress for %d epoches, epoch %d\n", epoches,
+               epoch);
+      }
+
+      for (int num = 0; num < 10; ++num) {
+        for (int sample = 0; sample < 3; ++sample) {
+          loss += nnet_loss(nn, dataset.items[num * 3 + sample].input,
+                            expected_output[num]);
+        }
       }
 
       for (size_t i = 0; i < nn.count; i++)
         free_matrix(errors[i]);
       free(errors);
 
-      printf("\033[F");
-      printf("training completed for %d epoches, final loss: %f\033[0K\n",
-             epoches, loss);
+      printf("\033[1F");
+      printf("pretraining completed for %d epoches, final loss: %f\n", epoches,
+             loss);
     } else if (strcmp(cmd, "---") == 0) {
       printf("---\n");
     } else if (strcmp(cmd, "rand") == 0) {
       unsigned int seed;
       fscanf(fp, "%d", &seed);
       srand(seed == 0 ? time(0) : seed);
-    } else if (strcmp(cmd, "nn_randomize") == 0) {
+    } else if (strcmp(cmd, "nn.randomize") == 0) {
       nnet_randomize(nn);
-    } else if (strcmp(cmd, "nn_print") == 0) {
+    } else if (strcmp(cmd, "nn.print") == 0) {
       nnet_print(nn);
     } else if (strcmp(cmd, "print_dataset") == 0) {
       print_dataset(dataset);

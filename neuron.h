@@ -144,8 +144,7 @@ void nnet_gradient(Nnet g, Nnet nn, Matrix input, Matrix expectation, float lr,
       for (size_t j = 0; j < prv_layer->a.cols; j++) {
         float err_sum = 0.0f;
         for (size_t k = 0; k < crt_layer->w.cols; k++) {
-          //   error of the kth neuron   the weight of the kth neuron of the
-          //   current layer for that specific input (previous output)
+          //   error of the kth neuron   the weight of the kth neuron of the current layer for that specific input (previous output)
           err_sum += crt_error.data[k] * matrix_at(crt_layer->w, j, k);
         }
         // that specific input (previous output) indicates has one-by-one
