@@ -10,6 +10,8 @@ typedef struct {
 } Matrix;
 
 #define matrix_at(matrix, row, col) matrix.data[row * matrix.cols + col]
+#define matrix_at_transposed(matrix, row, col)                                 \
+  matrix.data[col * matrix.cols + row]
 
 // Allocation included
 Matrix init_matrix(size_t rows, size_t cols);
@@ -118,7 +120,7 @@ void matrix_mul_transposed_b(Matrix out, Matrix a, Matrix bT) {
     for (int j = 0; j < bT.rows; ++j) {
       float sum = 0;
       for (int k = 0; k < a.cols; ++k) {
-        sum += matrix_at(a, i, k) * matrix_at(bT, j, k);
+        sum += matrix_at(a, i, k) * matrix_at_transposed(bT, k, j);
       }
       matrix_at(out, i, j) = sum;
     }

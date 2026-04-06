@@ -138,22 +138,9 @@ void nnet_gradient(Nnet g, Nnet nn, Matrix input, Matrix expectation,
     }
 
     // Backpropagation
-    if (i > 0) {
-      Layer *prv_layer_g = &g.layers[i - 1];
-      Layer *prv_layer = &nn.layers[i - 1];
-
-      for (size_t j = 0; j < prv_layer->a.cols; j++) {
-        prv_layer_g->a.data[j] = 0;
-        for (size_t k = 0; k < crt_layer->w.cols; k++) {
-          // Note that the gradient calculated has not yet been *2-ed,
-          // it is kind of unnecessary.
-          // How responsible the output of the previous layer is for the error
-          // on the current layer.
-          prv_layer_g->a.data[j] +=
-              crt_layer_g->a.data[k] * matrix_at(crt_layer->w, j, k);
-        }
-      }
-    }
+    if (i > 0)
+      // Not really a transposed GEMM, but it just fits such situation
+      matrix_mul_transposed_b(g.layers[i - 1].a, crt_layer_g->a, crt_layer->w);
   }
 }
 
